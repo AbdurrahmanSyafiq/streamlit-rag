@@ -6,7 +6,7 @@ llama-index-vector-stores-weaviate
 llama-index-embeddings-huggingface
 llama-index-llms-langchain
 llama-parse
-langchain
+langchain_community
 langchain-groq
 transformers
 sentence-transformers
