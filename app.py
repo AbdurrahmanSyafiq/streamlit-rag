@@ -4,6 +4,7 @@ import pickle
 from dotenv import load_dotenv
 from pathlib import Path
 import weaviate
+from weaviate.classes.init import Auth
 from llama_index.core.schema import Document
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.vector_stores.weaviate import WeaviateVectorStore
@@ -25,17 +26,25 @@ if not GROQ_API_KEY:
     st.error("❌ GROQ API Key tidak ditemukan! Pastikan sudah menyimpan API Key di file .env.")
     st.stop()
 
-WEAVIATE_URL = os.getenv("WEAVIATE_URL", "http://localhost:8080")
+WEAVIATE_CLOUD_URL = os.getenv("WEAVIATE_CLOUD_URL")
+WEAVIATE_API_KEY = os.getenv("WEAVIATE_API_KEY")
 WEAVIATE_COLLECTION_NAME = os.getenv("WEAVIATE_COLLECTION_NAME", "DocumentChunks")
 
 # =========================
-# STEP 1: CONNECT TO WEAVIATE
+# STEP 1: CONNECT TO WEAVIATE CLOUD
 # =========================
 try:
-    weaviate_client = weaviate.connect_to_local()
-    st.sidebar.success("✅ Terhubung ke Weaviate!")
+    weaviate_client = weaviate.connect_to_weaviate_cloud(
+        cluster_url=WEAVIATE_CLOUD_URL,
+        auth_credentials=Auth.api_key(WEAVIATE_API_KEY),
+    )
+    if weaviate_client.is_ready():
+        st.sidebar.success("✅ Terhubung ke Weaviate Cloud!")
+    else:
+        st.sidebar.error("❌ Gagal: Weaviate Cloud tidak siap.")
+        st.stop()
 except Exception as e:
-    st.sidebar.error(f"❌ Gagal terhubung ke Weaviate: {e}")
+    st.sidebar.error(f"❌ Gagal terhubung ke Weaviate Cloud: {e}")
     st.stop()
 
 # =========================
@@ -107,7 +116,7 @@ def build_query_engine(_documents):
 # =========================
 # MAIN UI
 # =========================
-st.title("📄 QA Dokumen PPNPK Retinoblastoma (via PKL)")
+st.title("📄 QA Dokumen PPNPK Retinoblastoma (via PKL + Weaviate Cloud)")
 
 query = st.text_area("💬 Pertanyaan", placeholder="Contoh: Apa saja indikasi medikasi Sevofluran?", height=100)
 
