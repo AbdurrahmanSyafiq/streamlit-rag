@@ -1,0 +1,12 @@
+streamlit
+python-dotenv
+weaviate-client>=4.0.0
+llama-index>=0.10.34
+llama-index-vector-stores-weaviate
+llama-index-embeddings-huggingface
+llama-parse
+langchain
+langchain-groq
+transformers
+sentence-transformers
+torch
