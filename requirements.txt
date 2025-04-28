@@ -11,3 +11,5 @@ langchain-groq
 transformers
 sentence-transformers
 torch
+chromadb
+llama-index-vector-stores-chroma
