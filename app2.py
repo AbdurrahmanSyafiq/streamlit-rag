@@ -3,10 +3,10 @@ import os
 import pickle
 from dotenv import load_dotenv
 from pathlib import Path
-import chromadb
+from pinecone import Pinecone
 from llama_index.core.schema import Document
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.vector_stores.chroma import ChromaVectorStore
+from llama_index.vector_stores.pinecone import PineconeVectorStore
 from llama_index.core import StorageContext, VectorStoreIndex
 from llama_index.core.node_parser import SentenceWindowNodeParser
 from llama_index.core.indices.postprocessor import (
@@ -21,22 +21,22 @@ from langchain_groq import ChatGroq
 load_dotenv()
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    st.error("❌ GROQ API Key tidak ditemukan! Pastikan sudah menyimpan API Key di file .env.")
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
+PINECONE_INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "document-chunks")
+
+if not GROQ_API_KEY or not PINECONE_API_KEY:
+    st.error("❌ API Key atau konfigurasi belum lengkap di file .env.")
     st.stop()
 
-CHROMA_COLLECTION_NAME = os.getenv("CHROMA_COLLECTION_NAME", "document_chunks")
-CHROMA_DB_DIR = "./chroma_db"  # Local directory untuk ChromaDB persistent
-
 # =========================
-# STEP 1: CONNECT TO CHROMA DB
+# STEP 1: CONNECT TO PINECONE (v2 style)
 # =========================
 try:
-    chroma_client = chromadb.PersistentClient(path=CHROMA_DB_DIR)
-    collection = chroma_client.get_or_create_collection(name=CHROMA_COLLECTION_NAME)
-    st.sidebar.success("✅ Terhubung ke ChromaDB lokal!")
+    pc = Pinecone(api_key=PINECONE_API_KEY)
+    pinecone_index = pc.Index(PINECONE_INDEX_NAME)
+    st.sidebar.success("✅ Terhubung ke Pinecone!")
 except Exception as e:
-    st.sidebar.error(f"❌ Gagal terhubung ke ChromaDB: {e}")
+    st.sidebar.error(f"❌ Gagal terhubung ke Pinecone: {e}")
     st.stop()
 
 # =========================
@@ -79,13 +79,14 @@ def build_query_engine(_documents):
         original_text_metadata_key="original_text",
     )
 
-    vector_store = ChromaVectorStore(
-        chroma_collection=collection  # Pakai collection yang sudah dibuat
+    vector_store = PineconeVectorStore(
+        pinecone_index=pinecone_index,
+        namespace="default"  # optional, namespace di Pinecone
     )
 
     storage_context = StorageContext.from_defaults(vector_store=vector_store)
 
-    index = VectorStoreIndex.from_documents(
+    index_obj = VectorStoreIndex.from_documents(
         documents=_documents,
         embed_model=embed_model,
         storage_context=storage_context,
@@ -98,7 +99,7 @@ def build_query_engine(_documents):
 
     post_proc = [postproc, rerank] if rerank_enabled else [postproc]
 
-    return index.as_query_engine(
+    return index_obj.as_query_engine(
         similarity_top_k=similarity_top_k,
         node_postprocessors=post_proc,
         llm=llm
@@ -107,7 +108,7 @@ def build_query_engine(_documents):
 # =========================
 # MAIN UI
 # =========================
-st.title("📄 QA Dokumen PPNPK Retinoblastoma (via PKL + ChromaDB)")
+st.title("📄 QA Dokumen PPNPK Retinoblastoma (via PKL + Pinecone v2)")
 
 query = st.text_area("💬 Pertanyaan", placeholder="Contoh: Apa saja indikasi medikasi Sevofluran?", height=100)
 

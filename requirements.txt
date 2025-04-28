@@ -13,3 +13,5 @@ sentence-transformers
 torch
 chromadb
 llama-index-vector-stores-chroma
+llama-index-vector-stores-pinecone
+pinecone
